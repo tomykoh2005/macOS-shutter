@@ -1,0 +1,61 @@
+import time
+import winsound
+import ctypes
+
+SHUTTER_WAV = r"C:\Sounds\macOS_screenshot_sound.wav"
+user32 = ctypes.windll.user32
+
+VK_LBUTTON = 0x01
+VK_SHIFT = 0x10
+VK_LWIN = 0x5B
+VK_RWIN = 0x5C
+VK_SNAPSHOT = 0x2C
+
+def is_pressed(vk_code: int) -> bool:
+  return bool(user32.GetAsyncKeyState(vk_code) & 0x8000)
+
+def play_shutter():
+  winsound.PlaySound(
+      SHUTTER_WAV,
+      winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT,
+  )
+
+def main():
+  snip_armed = False
+  mouse_down_during_snip = False
+  last_play = 0.0
+
+  while True:
+    time.sleep(0.02)
+
+    win_down = is_pressed(VK_LWIN) or is_pressed(VK_RWIN)
+    shift_down = is_pressed(VK_SHIFT)
+
+    if win_down and shift_down and is_pressed(0x53):
+      snip_armed = True
+      mouse_down_during_snip = False
+      time.sleep(0.25)
+      continue
+
+    if is_pressed(VK_SNAPSHOT):
+      now = time.monotonic()
+      if now - last_play > 0.4:
+        play_shutter()
+        last_play = now
+      time.sleep(0.25)
+      continue
+
+    if snip_armed:
+      lmb_down = is_pressed(VK_LBUTTON)
+      if lmb_down:
+        mouse_down_during_snip = True
+      elif mouse_down_during_snip and not lmb_down:
+        now = time.monotonic()
+        if now - last_play > 0.4:
+          play_shutter()
+          last_play = now
+        snip_armed = False
+        mouse_down_during_snip = False
+
+if __name__ == "__main__":
+  main()
